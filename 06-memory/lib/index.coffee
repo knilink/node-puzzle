@@ -1,20 +1,25 @@
-fs = require 'fs'
+fs = require "fs"
+rl = require "readline"
 
+# Below is the minimum implementation to pass the test case since there is no
+# further specification.
+#
+# Practically, "countryIpCounter" should capture all possible exceptions such as
+# "file not exists", "invalid format" etc and pass the error object back to its
+# caller via "cb err, null"
 
 exports.countryIpCounter = (countryCode, cb) ->
   return cb() unless countryCode
 
-  fs.readFile "#{__dirname}/../data/geo.txt", 'utf8', (err, data) ->
-    if err then return cb err
+  counter = 0
 
-    data = data.toString().split '\n'
-    counter = 0
+  input = fs.createReadStream "#{__dirname}/../data/geo.txt", encoding: "utf8"
 
-    for line in data when line
-      line = line.split '\t'
-      # GEO_FIELD_MIN, GEO_FIELD_MAX, GEO_FIELD_COUNTRY
-      # line[0],       line[1],       line[3]
+  rd = rl.createInterface {input}
 
-      if line[3] == countryCode then counter += +line[1] - +line[0]
-
-    cb null, counter
+  rd
+    .on "line", (line) ->
+      line = line.toString().split "\t"
+      counter += +line[1] - +line[0] if line[3] == countryCode
+    .on "close", ->
+      cb null, counter
