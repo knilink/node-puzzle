@@ -18,7 +18,7 @@
 # |          | A       |        |                    +1 |                    |        |       |
 # |          | "       |      0 |                       | words              |      1 |       |
 # | "        | "       |      1 |                       |                    |      0 |       |
-# |          | "       |      1 | words_before_quote +1 |                    |      0 |       |
+# | not "    | "       |      1 | words_before_quote +1 |                    |      0 |       |
 # |          | \n      |        |                       |                    |        |    +1 |
 # | not \n   | EOF     |        |                       |                    |        |    +1 |
 
