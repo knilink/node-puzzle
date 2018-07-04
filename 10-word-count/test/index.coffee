@@ -116,6 +116,11 @@ describe '10-word-count', ->
       expected = words: 2, lines: 1
       helper input, expected, done
 
+    it 'should count continuously uppercase as multiple words', (done) ->
+      input = 'FOO'
+      expected = words: 3, lines: 1
+      helper input, expected, done
+
   describe 'lines', ->
     it 'should count empty lines', (done) ->
       input = '\n\n'

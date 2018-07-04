@@ -1,30 +1,45 @@
+# It's basically a finite state machine solution
+
+#   a: lowercase
+#   A: uppercase
+#   ": quote
+#   _: words separator
+#  \n: lines separator
+# EOF: end of file
+
+# |            state            |                           action                            |
+# +----------+---------+--------+-----------------------+--------------------+--------+-------+
+# | previous | current | quoted |                 words | words_before_quote | quoted | lines |
+# +----------+---------+--------+-----------------------+--------------------+--------+-------+
+# | _        | _       |        |                       |                    |        |       |
+# | a        | _       |        |                       |                    |        |       |
+# | a        | a       |        |                       |                    |        |       |
+# | not aA   | a       |        |                    +1 |                    |        |       |
+# |          | A       |        |                    +1 |                    |        |       |
+# |          | "       |      0 |                       | words              |      1 |       |
+# | "        | "       |      1 |                       |                    |      0 |       |
+# |          | "       |      1 | words_before_quote +1 |                    |      0 |       |
+# |          | \n      |        |                       |                    |        |    +1 |
+# | not \n   | EOF     |        |                       |                    |        |    +1 |
+
 through2 = require 'through2'
 
-
-State =
-  SEPARATOR: 0
-  WORD: 1
-
-is_quote = (c) -> c is '"'
-is_line_separator = (c) -> c is '\n'
-
-is_alpha = (c) -> /[a-zA-Z0-9]/.test c
-is_uppercase = (c) -> /[A-Z]/.test c
+A = (c) -> /[A-Z]/.test c
+a = (c) -> /[0-9a-z]/.test c
+_ = (c) -> /[^0-9a-z\n\"]/.test c
+n = (c) -> c is '\n'
+q = (c) -> c is '"'
 
 module.exports = ->
   bytes = 0
   chars = 0
   words = 0
   lines = 0
+  words_before_quote = words
 
-  state = State.SEPARATOR
-
-  quoted_state =
-    empty: true
-    entered: false
-    words: words
-
-  last_char = '\n'
+  pc = null # previous character
+  cc = '\n' # current character
+  quoted = false
 
   transform = (chunk, encoding, cb) ->
     if chunk instanceof Buffer
@@ -35,36 +50,26 @@ module.exports = ->
 
     chars += chunk.length;
     for c in chunk
-      last_char = c
+      pc = cc
+      cc = c
 
-      if is_quote c
-        if quoted_state.entered
-          quoted_state.entered = false
-          words = quoted_state.words
-          state = State.WORD if not quoted_state.empty
+      if (a cc) and not (a pc) and not (A pc)
+        words++
+      if A cc
+        words++
+      if q cc
+        if quoted and not (q pc)
+          words = words_before_quote + 1
         else
-          quoted_state =
-            entered: true
-            empty: true
-            words: words
-          quoted_state.words++ if state is State.WORD
-      else
-        quoted_state.empty = false
+          words_before_quote = words
+        quoted = !quoted
 
-      if is_alpha c
-        words++ if state is State.WORD and is_uppercase c
-        state = State.WORD
-      else
-        words++ if state is State.WORD
-        state = State.SEPARATOR
-
-      lines++ if is_line_separator c
+      lines++ if n cc
 
     return cb()
 
   flush = (cb) ->
-    words++ if state is State.WORD
-    lines++ if last_char != '\n'
+    lines++ if not n cc
     this.push {bytes, chars, words, lines}
     this.push null
     return cb()
